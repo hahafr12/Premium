@@ -1,88 +1,99 @@
-import socket
-import threading
-import time
+import os
+import subprocess
 
-HOST = '0.0.0.0'
-PORT = 443
+def clear():
+    os.system('clear')
 
-active_clients = {}
+def banner():
+    print("  _____              _ _      ")
+    print(" |  __ \\            ( ) |     ")
+    print(" | |  | | ___  _ __ |/| |_    ")
+    print(" | |  | |/ _ \\| '_ \\  | __|   ")
+    print(" | |__| | (_) | | | | | |_    ")
+    print(" |_____/ \\___/|_| |_|  \\__|   ")
+    print()
+    print("  ____                                ")
+    print(" |  _ \\                               ")
+    print(" | |_) | ___     ______     _ _       ")
+    print(" |  _ < / _ \\   |  ____|   (_) |      ")
+    print(" | |_) |  __/   | |____   ___| |      ")
+    print(" |____/ \\___|   |  __\\ \\ / / | |      ")
+    print("                | |___\\ V /| | |      ")
+    print("                |______\\_/ |_|_|      ")
+    print()
 
-# HTML: Bekleme Sayfası
-wait_html = """\
-HTTP/1.1 200 OK
-Content-Type: text/html
+def main_menu():
+    input("Bu aracı sadece eğitim amaçlı kullanın. Devam etmek için Enter'a basın.")
+    clear()
+    print("   1. Boot2Root    ")
+    print("   2. JustRoot     ")
+    print()
+    print("Sürüm 1.1")
+    choice = input("Seçiminizi girin (1 veya 2): ")
+    return choice
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Bekleme Sayfası</title>
-    <meta charset="utf-8">
-    <script>
-        var kodGosterildi = false;
-        function kontrolEt() {
-            if (kodGosterildi) return;
-            fetch('/kod')
-                .then(response => response.text())
-                .then(txt => {
-                    if (txt.startsWith('KOD:')) {
-                        kodGosterildi = true;
-                        document.getElementById('bekle').style.display = 'none';
-                        document.getElementById('kod').innerText = txt;
-                    }
-                });
-        }
-        setInterval(kontrolEt, 5000);
-    </script>
-</head>
-<body>
-    <div id="bekle">
-        <h1>Lütfen bekleyin...</h1>
-        <p>Bu bir bekleme sayfasıdır. 10 dakika beklediğinizde kodunuz burada görünecek.</p>
-    </div>
-    <h2 id="kod"></h2>
-</body>
-</html>
-"""
+def install_packages():
+    subprocess.run(["apt", "update", "-y"])
+    subprocess.run(["apt", "upgrade", "-y"])
+    for pkg in ["wget", "openssl-tool", "proot", "bash", "nano", "neofetch"]:
+        subprocess.run(["apt", "install", pkg, "-y"])
+    os.system("termux-setup-storage")
 
-def generate_fake_code():
-    import random, string
-    return 'KOD:' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+def setup_kali():
+    etc_dir = "/data/data/com.termux/files/usr/etc"
+    root_dir = os.path.join(etc_dir, "Root")
+    os.makedirs(root_dir, exist_ok=True)
 
-def client_thread(conn, addr):
-    first_request_time = time.time()
-    session_id = str(addr)
-    active_clients[session_id] = first_request_time
+    os.chdir(root_dir)
+    subprocess.run([
+        "wget",
+        "https://raw.githubusercontent.com/EXALAB/AnLinux-Resources/master/Scripts/Installer/Kali/kali.sh"
+    ])
+    subprocess.run(["bash", "kali.sh"])
 
-    try:
-        while True:
-            request = conn.recv(1024)
-            if not request:
-                break
-            request_line = request.decode().split('\r\n')[0]
-            print(f"[{addr}] İstek: {request_line}")
+def apply_choice(choice):
+    bashrc = "/data/data/com.termux/files/usr/etc/bash.bashrc"
+    root_script = "bash /data/data/com.termux/files/usr/etc/Root/start-kali.sh"
 
-            if request_line.startswith('GET /kod'):
-                elapsed = time.time() - active_clients[session_id]
-                if elapsed >= 600:  # 10 dakika
-                    fake_code = generate_fake_code()
-                    response = f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{fake_code}"
-                else:
-                    response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nBekleniyor..."
-                conn.sendall(response.encode('utf-8'))
-            else:
-                conn.sendall(wait_html.encode('utf-8'))
-    except Exception as e:
-        print(f"Hata: {e}")
-    finally:
-        conn.close()
-        if session_id in active_clients:
-            del active_clients[session_id]
+    if choice == "1":
+        with open(bashrc, "a") as f:
+            f.write(f"\n{root_script}\n")
+        print("\nTermux'u yeniden başlatın, root olarak açılacaktır.")
+    elif choice == "2":
+        with open(bashrc, "a") as f:
+            f.write(f"\nalias rootme='{root_script}'\n")
+        os.system(f"source {bashrc}")
+        print("\nTermux'u yeniden başlatın ve root olmak için herhangi bir yerde 'rootme' yazın.")
+    else:
+        print("""
+   ___   ___  _ __  ___  
+  / _ \\ / _ \\| '_ \\/ __| 
+ | (_) | (_) | |_) \\__ \\ 
+  \\___/ \\___/| .__/|___/ 
+             | |         
+             |_|         
+Beklenmeyen bir hata oluştu. Lütfen doğru bir seçim yapın ve tekrar deneyin.
+""")
+        exit()
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((HOST, PORT))
-    s.listen(5)
-    print(f"Sunucu {PORT} portunda başlatıldı.")
-    while True:
-        conn, addr = s.accept()
-        threading.Thread(target=client_thread, args=(conn, addr), daemon=True).start()
+def credit_info():
+    print("\nRoot işlemi AnLinux tarafından sağlanmıştır.")
+    print("Araç geliştirici: Ajay")
+    print("\nİletişim:")
+    print("Telegram  : Tamilhackz (public group)")
+    print("Instagram : tamilhackz_ ")
+    print("Twitter   : TamilHackz ")
+    print("\nYouTube bilgileri kaldırılmıştır.\n")
+
+if __name__ == "__main__":
+    clear()
+    banner()
+    choice = main_menu()
+    install_packages()
+    os.chdir("/data/data/com.termux/files/usr/etc/")
+    os.system("cp bash.bashrc bash.bashrc.bak")
+    setup_kali()
+    clear()
+    os.system("neofetch")
+    apply_choice(choice)
+    credit_info()
