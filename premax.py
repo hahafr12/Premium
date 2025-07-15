@@ -78,12 +78,12 @@ Beklenmeyen bir hata oluştu. Lütfen doğru bir seçim yapın ve tekrar deneyin
 
 def credit_info():
     print("\nRoot işlemi AnLinux tarafından sağlanmıştır.")
-    print("Araç geliştirici: Ajay")
-    print("\nİletişim:")
-    print("Telegram  : Tamilhackz (public group)")
-    print("Instagram : tamilhackz_ ")
-    print("Twitter   : TamilHackz ")
-    print("\nYouTube bilgileri kaldırılmıştır.\n")
+    print("Araç geliştirici: Muhammet Atilla Altan")
+    print("\nİletişim:+90 5514959493")
+    print("Telegram  : Tamilhackz (muhammetcanoo")
+    print("Instagram : None")
+    print("Twitter   : None ")
+    print("\nYouTube bilgileri: None\n")
 
 if __name__ == "__main__":
     clear()
