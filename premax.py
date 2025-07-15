@@ -61,9 +61,9 @@ def apply_choice(choice):
         print("\nTermux'u yeniden başlatın, root olarak açılacaktır.")
     elif choice == "2":
         with open(bashrc, "a") as f:
-            f.write(f"\nalias rooter='{root_script}'\n")
+            f.write(f"\nalias adminpro='{root_script}'\n")
         os.system(f"source {bashrc}")
-        print("\nTermux'u yeniden başlatın ve root olmak için herhangi bir yerde 'rooter' yazın.")
+        print("\nTermux'u yeniden başlatın ve root olmak için herhangi bir yerde 'adminpro' yazın.")
     else:
         print("""
    ___   ___  _ __  ___  
