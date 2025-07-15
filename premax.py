@@ -1,99 +1,66 @@
-import os
-import subprocess
+from flask import Flask, session, render_template_string, jsonify, request
+import time
+import random
+import string
 
-def clear():
-    os.system('clear')
+app = Flask(__name__)
+app.secret_key = 'gizli_bir_anahtar'  # Güvenlik için güçlü bir anahtar kullan!
 
-def banner():
-    print("  _____              _ _      ")
-    print(" |  __ \\            ( ) |     ")
-    print(" | |  | | ___  _ __ |/| |_    ")
-    print(" | |  | |/ _ \\| '_ \\  | __|   ")
-    print(" | |__| | (_) | | | | | |_    ")
-    print(" |_____/ \\___/|_| |_|  \\__|   ")
-    print()
-    print("  ____                                ")
-    print(" |  _ \\                               ")
-    print(" | |_) | ___     ______     _ _       ")
-    print(" |  _ < / _ \\   |  ____|   (_) |      ")
-    print(" | |_) |  __/   | |____   ___| |      ")
-    print(" |____/ \\___|   |  __\\ \\ / / | |      ")
-    print("                | |___\\ V /| | |      ")
-    print("                |______\\_/ |_|_|      ")
-    print()
+WAIT_SECONDS = 600  # 10 dakika
 
-def main_menu():
-    input("Bu aracı sadece eğitim amaçlı kullanın. Devam etmek için Enter'a basın.")
-    clear()
-    print("   1. Boot2Root    ")
-    print("   2. JustRoot     ")
-    print()
-    print("Sürüm 1.1")
-    choice = input("Seçiminizi girin (1 veya 2): ")
-    return choice
+# Bekleme sayfası HTML'i
+WAIT_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bekleme Sayfası</title>
+    <meta charset="utf-8">
+    <script>
+        var kodGosterildi = false;
+        function kontrolEt() {
+            if (kodGosterildi) return;
+            fetch('/kod')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.kod) {
+                        kodGosterildi = true;
+                        document.getElementById('bekle').style.display = 'none';
+                        document.getElementById('kod').innerText = data.kod;
+                    }
+                });
+        }
+        setInterval(kontrolEt, 5000);
+    </script>
+</head>
+<body>
+    <div id="bekle">
+        <h1>Lütfen bekleyin...</h1>
+        <p>Bu bir bekleme sayfasıdır. 10 dakika beklediğinizde kodunuz burada görünecek.</p>
+    </div>
+    <h2 id="kod"></h2>
+</body>
+</html>
+"""
 
-def install_packages():
-    subprocess.run(["apt", "update", "-y"])
-    subprocess.run(["apt", "upgrade", "-y"])
-    for pkg in ["wget", "openssl-tool", "proot", "bash", "nano", "neofetch"]:
-        subprocess.run(["apt", "install", pkg, "-y"])
-    os.system("termux-setup-storage")
+def generate_fake_code():
+    return 'KOD:' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
-def setup_kali():
-    etc_dir = "/data/data/com.termux/files/usr/etc"
-    root_dir = os.path.join(etc_dir, "Root")
-    os.makedirs(root_dir, exist_ok=True)
+@app.route('/')
+def index():
+    if 'start_time' not in session:
+        session['start_time'] = time.time()
+    return render_template_string(WAIT_HTML)
 
-    os.chdir(root_dir)
-    subprocess.run([
-        "wget",
-        "https://raw.githubusercontent.com/EXALAB/AnLinux-Resources/master/Scripts/Installer/Kali/kali.sh"
-    ])
-    subprocess.run(["bash", "kali.sh"])
-
-def apply_choice(choice):
-    bashrc = "/data/data/com.termux/files/usr/etc/bash.bashrc"
-    root_script = "bash /data/data/com.termux/files/usr/etc/Root/start-kali.sh"
-
-    if choice == "1":
-        with open(bashrc, "a") as f:
-            f.write(f"\n{root_script}\n")
-        print("\nTermux'u yeniden başlatın, root olarak açılacaktır.")
-    elif choice == "2":
-        with open(bashrc, "a") as f:
-            f.write(f"\nalias adminpro='{root_script}'\n")
-        os.system(f"source {bashrc}")
-        print("\nTermux'u yeniden başlatın ve root olmak için herhangi bir yerde 'adminpro' yazın.")
+@app.route('/kod')
+def kod():
+    start_time = session.get('start_time', time.time())
+    elapsed = time.time() - start_time
+    if elapsed >= WAIT_SECONDS:
+        if 'kod' not in session:
+            session['kod'] = generate_fake_code()
+        return jsonify({'kod': session['kod']})
     else:
-        print("""
-   ___   ___  _ __  ___  
-  / _ \\ / _ \\| '_ \\/ __| 
- | (_) | (_) | |_) \\__ \\ 
-  \\___/ \\___/| .__/|___/ 
-             | |         
-             |_|         
-Beklenmeyen bir hata oluştu. Lütfen doğru bir seçim yapın ve tekrar deneyin.
-""")
-        exit()
-
-def credit_info():
-    print("\nRoot işlemi AnLinux tarafından sağlanmıştır.")
-    print("Araç geliştirici: Muhammet Atilla Altan")
-    print("\nİletişim:+90 5514959493")
-    print("Telegram  : Tamilhackz (muhammetcanoo")
-    print("Instagram : None")
-    print("Twitter   : None ")
-    print("\nYouTube bilgileri: None\n")
+        return jsonify({'kod': None})
 
 if __name__ == "__main__":
-    clear()
-    banner()
-    choice = main_menu()
-    install_packages()
-    os.chdir("/data/data/com.termux/files/usr/etc/")
-    os.system("cp bash.bashrc bash.bashrc.bak")
-    setup_kali()
-    clear()
-    os.system("neofetch")
-    apply_choice(choice)
-    credit_info()
+    app.run(host='0.0.0.0', port=8080)
