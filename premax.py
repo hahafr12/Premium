@@ -6,7 +6,7 @@ import string
 app = Flask(__name__)
 app.secret_key = 'gizli_bir_anahtar'  # Güvenlik için güçlü bir anahtar kullan!
 
-WAIT_SECONDS = 600  # 10 dakika
+WAIT_SECONDS = 60  # 1 dakika
 
 # Bekleme sayfası HTML'i
 WAIT_HTML = """
@@ -35,7 +35,7 @@ WAIT_HTML = """
 <body>
     <div id="bekle">
         <h1>Lütfen bekleyin...</h1>
-        <p>Bu bir bekleme sayfasıdır. 10 dakika beklediğinizde kodunuz burada görünecek.</p>
+        <p>Bu bir bekleme sayfasıdır. 1 dakika beklediğinizde kodunuz burada görünecek.</p>
     </div>
     <h2 id="kod"></h2>
 </body>
