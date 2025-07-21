@@ -1,87 +1,64 @@
 import socket
-import threading
-import datetime
-import subprocess
-import whois
 import requests
+import whois
+import json
 
-PORT = 2222  # SSH benzeri port
-
-def os_tahmini(ip):
+def get_ip(domain):
     try:
-        # Ping ile TTL değerini al
-        result = subprocess.check_output(["ping", "-c", "1", ip], stderr=subprocess.DEVNULL).decode()
-        for line in result.split("\n"):
-            if "ttl=" in line.lower():
-                ttl_value = int(line.lower().split("ttl=")[1].split()[0])
-                if ttl_value <= 64:
-                    return "Linux/macOS (TTL=%d)" % ttl_value
-                elif ttl_value <= 128:
-                    return "Windows (TTL=%d)" % ttl_value
-                elif ttl_value <= 255:
-                    return "Cisco/Ağ Cihazı (TTL=%d)" % ttl_value
-        return "OS tahmin edilemedi"
+        ip = socket.gethostbyname(domain)
+        return ip
     except:
-        return "TTL alınamadı"
+        return "IP alınamadı"
 
-def whois_bilgisi(ip):
+def get_whois(domain):
     try:
-        bilgi = whois.whois(ip)
-        domain = bilgi.domain_name
-        org = bilgi.org
-        if isinstance(domain, list):
-            domain = domain[0]
-        return f"WHOIS: {domain or 'Domain bulunamadı'} | {org or 'Organizasyon bilinmiyor'}"
-    except Exception as e:
-        return f"WHOIS alınamadı: {str(e)}"
+        w = whois.whois(domain)
+        return w
+    except:
+        return "Whois bilgisi alınamadı"
 
-def ip_konum_bilgisi(ip):
+def get_headers(url):
     try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,query"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if data["status"] == "success":
-            return f"{data['country']} / {data['regionName']} / {data['city']} (IP: {data['query']})"
+        response = requests.get(url)
+        return response.headers
+    except:
+        return "HTTP başlıkları alınamadı"
+
+def get_robots(url):
+    try:
+        response = requests.get(url + "/robots.txt")
+        if response.status_code == 200:
+            return response.text
         else:
-            return "Konum bilgisi alınamadı."
-    except Exception as e:
-        return f"Konum bilgisi alınamadı: {str(e)}"
+            return "robots.txt bulunamadı"
+    except:
+        return "robots.txt alınamadı"
 
-def handle_client(client_socket, addr):
-    ip = addr[0]
-    time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    print(f"\n[{time}] ⚠️ Yeni bağlantı alındı!")
-    print(f"[+] IP Adresi: {ip}")
-    print("[+] OS Tahmini:", os_tahmini(ip))
-    print("[+] WHOIS Bilgisi:", whois_bilgisi(ip))
-    print("[+] IP Konum Bilgisi:", ip_konum_bilgisi(ip))
-
+def get_ssl_info(domain):
     try:
-        client_socket.send(b"SSH-2.0-OpenSSH_7.9p1 Ubuntu-10\n")
-        while True:
-            command = client_socket.recv(1024)
-            if not command:
-                break
-            decoded = command.decode(errors="ignore").strip()
-            print(f"[{ip}] Girdi: {decoded}")
-            client_socket.send(b"Komut anlaşılamadı.\n")
-    except Exception as e:
-        print(f"[{ip}] Hata: {str(e)}")
-    finally:
-        client_socket.close()
-        print(f"[{ip}] Bağlantı kapatıldı.")
+        import ssl
+        import socket
+        context = ssl.create_default_context()
+        conn = context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=domain)
+        conn.settimeout(5)
+        conn.connect((domain, 443))
+        cert = conn.getpeercert()
+        return cert
+    except:
+        return "SSL sertifikası alınamadı"
 
-def start_honeypot():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(("0.0.0.0", PORT))
-    server.listen(5)
-    print(f"[+] Honeypot başlatıldı. Port: {PORT}")
+def site_info(domain):
+    url = f"https://{domain}"
+    print(f"[*] Domain: {domain}")
+    print(f"[*] IP Adresi: {get_ip(domain)}")
+    print(f"\n[*] Whois Bilgisi:")
+    print(get_whois(domain))
+    print(f"\n[*] HTTP Başlıkları:")
+    print(get_headers(url))
+    print(f"\n[*] SSL Sertifikası:")
+    print(get_ssl_info(domain))
+    print(f"\n[*] Robots.txt:")
+    print(get_robots(url))
 
-    while True:
-        client, addr = server.accept()
-        thread = threading.Thread(target=handle_client, args=(client, addr))
-        thread.start()
-
-if __name__ == "__main__":
-    start_honeypot()
+# Kullanım
+site_info("roblox.com")
