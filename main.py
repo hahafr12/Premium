@@ -37,7 +37,6 @@ def get_robots(url):
 def get_ssl_info(domain):
     try:
         import ssl
-        import socket
         context = ssl.create_default_context()
         conn = context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=domain)
         conn.settimeout(5)
@@ -47,18 +46,39 @@ def get_ssl_info(domain):
     except:
         return "SSL sertifikası alınamadı"
 
-def site_info(domain):
-    url = f"https://{domain}"
-    print(f"[*] Domain: {domain}")
-    print(f"[*] IP Adresi: {get_ip(domain)}")
-    print(f"\n[*] Whois Bilgisi:")
+def main():
+    print("🔎 Web Site Bilgi Toplama Aracı")
+    domain = input("Lütfen alan adını girin (örnek: roblox.com): ").strip()
+
+    if not domain:
+        print("Alan adı boş olamaz!")
+        return
+
+    url = "https://" + domain
+    print("\n--- Sonuçlar ---")
+    print(f"[✓] Domain: {domain}")
+    print(f"[✓] IP Adresi: {get_ip(domain)}")
+
+    print("\n[✓] Whois Bilgisi:")
     print(get_whois(domain))
-    print(f"\n[*] HTTP Başlıkları:")
-    print(get_headers(url))
-    print(f"\n[*] SSL Sertifikası:")
-    print(get_ssl_info(domain))
-    print(f"\n[*] Robots.txt:")
+
+    print("\n[✓] HTTP Başlıkları:")
+    headers = get_headers(url)
+    if isinstance(headers, dict):
+        for key, value in headers.items():
+            print(f"{key}: {value}")
+    else:
+        print(headers)
+
+    print("\n[✓] SSL Sertifikası:")
+    ssl_info = get_ssl_info(domain)
+    if isinstance(ssl_info, dict):
+        print(json.dumps(ssl_info, indent=2))
+    else:
+        print(ssl_info)
+
+    print("\n[✓] Robots.txt Dosyası:")
     print(get_robots(url))
 
-# Kullanım
-site_info("roblox.com")
+if __name__ == "__main__":
+    main()
