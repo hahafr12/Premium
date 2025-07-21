@@ -9,7 +9,7 @@ import json
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="/", intents=intents)
-TOKEN = "BOT_TOKENİNİ_BURAYA_YAZ"
+TOKEN = "MTM5Njg4Mzk2Mzc2Njc3MTg4Mw.GkPUS8.MW22d7uOMSJ5MaqoIIGszEUZXhfFYuMxIaWq4w"
 
 # Slash komut
 class DomainQuery(commands.Cog):
